@@ -12,21 +12,31 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Setup
 			var productRepository = Substitute.For<IProductRepository>();
-			productRepository.IsInStock("valid product sku").Returns(true);
-
-			//Action
-			productRepository.IsInStock("valid product sku");
+			productRepository.IsInStock("stocked product sku").Returns(true);
+			
+			//Action					 
+			productRepository.IsInStock("stocked product sku");
 
 			//Result
 			productRepository.Received().IsInStock(Arg.Any<string>());
-			productRepository.IsInStock("valid product sku").ShouldBe(true);
+			productRepository.IsInStock("stocked product sku").ShouldBe(true);
 		}
 
 		[Test]
 		public void Products_AreAllInStock_False()
 		{
+			var productRepository = Substitute.For<IProductRepository>();
+			productRepository.IsInStock("unstocked product sku").Returns(false);
 
+			//Action
+			productRepository.IsInStock("unstocked product sku");
+
+			//Result
+			productRepository.Received().IsInStock(Arg.Any<string>());
+			productRepository.IsInStock("unstocked product sku").ShouldBe(false);
 		}
+
+
 
 	}
 }
