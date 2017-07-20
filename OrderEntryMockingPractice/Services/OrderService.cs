@@ -1,4 +1,5 @@
-﻿using OrderEntryMockingPractice.Models;
+﻿using System;
+using OrderEntryMockingPractice.Models;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,12 +8,16 @@ namespace OrderEntryMockingPractice.Services
 	public class OrderService
 	{
 		private readonly IProductRepository _productRepository;
-		private IOrderFulfillmentService _orderFulfillment;
+		private readonly IOrderFulfillmentService _orderFulfillment;
+		private readonly ITaxRateService _taxRate;
+		private readonly ICustomerRepository _customerRepository;
 
-		public OrderService(IProductRepository productRepository, IOrderFulfillmentService orderFulfillment)
+		public OrderService(IProductRepository productRepository, IOrderFulfillmentService orderFulfillment, ITaxRateService taxRate, ICustomerRepository customerRepository)
 		{
 			_productRepository = productRepository;
 			_orderFulfillment = orderFulfillment;
+			_taxRate = taxRate;
+			_customerRepository = customerRepository;
 		}
 
         public OrderSummary PlaceOrder(Order order)
@@ -21,19 +26,37 @@ namespace OrderEntryMockingPractice.Services
 	        if (IsValid(order))
 	        {
 		        var orderConfirmation = _orderFulfillment.Fulfill(order);
+		        var customer = GetCustomerFromId(order.CustomerId);
+		        var taxes = _taxRate.GetTaxEntries(customer.PostalCode, customer.Country);
 
 				//Add OrderNumber to summary
 				return new OrderSummary()
 				{
 					OrderId = orderConfirmation.OrderId,
-					OrderNumber = orderConfirmation.OrderNumber
+					OrderNumber = orderConfirmation.OrderNumber,
+					CustomerId = orderConfirmation.CustomerId,
+					Taxes = taxes
 				};
 	        }
 			throw new OrderException(new List<OrderRuleViolation>());
         }
 
+		private Customer GetCustomerFromId(int? id)
+		{
+			Customer customer;
+			if (id != null)
+			{
+				customer = _customerRepository.Get((int) id);
+			}
+			else
+			{
+				throw new ArgumentException(message: "Customer ID was null");
+			}
+			return customer;
+		}
 
-	    public bool IsValid(Order order)
+
+		public bool IsValid(Order order)
 	    {
 		    return AreProductsUnique(order.OrderItems) && AreProductsInStock(order.OrderItems);
 	    }
