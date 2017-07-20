@@ -3,13 +3,11 @@
 	public class OrderRuleViolation : IRuleViolation
 	{
 		public string ErrorMessage { get; private set; }
-		public string PropertyMessage { get; private set; }
 
 
-		public OrderRuleViolation(string errorMessage, string propertyName)
+		public OrderRuleViolation(string errorMessage)
 		{
 			ErrorMessage = errorMessage;
-			PropertyMessage = propertyName;
 		}
 	}
 }

@@ -5,7 +5,7 @@ namespace OrderEntryMockingPractice.Services
 {
 	public class OrderException : Exception
 	{
-		public OrderException(List<OrderRuleViolation> reasons)
+		public OrderException(IReadOnlyList<OrderRuleViolation> reasons)
 		{
 			Reasons = reasons;
 		}

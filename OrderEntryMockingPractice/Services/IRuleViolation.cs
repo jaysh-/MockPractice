@@ -3,6 +3,5 @@
 	public interface IRuleViolation
 	{
 		string ErrorMessage { get; }
-		string PropertyMessage { get; }
 	}
 }
