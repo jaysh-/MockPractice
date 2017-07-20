@@ -32,6 +32,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -44,10 +45,13 @@
     <Compile Include="Services\IEmailService.cs" />
     <Compile Include="Services\IOrderFulfillmentService.cs" />
     <Compile Include="Services\IProductRepository.cs" />
+    <Compile Include="Services\IRuleViolation.cs" />
     <Compile Include="Services\ITaxRateService.cs" />
     <Compile Include="Models\Order.cs" />
     <Compile Include="Models\OrderItem.cs" />
     <Compile Include="Models\OrderConfirmation.cs" />
+    <Compile Include="Services\OrderException.cs" />
+    <Compile Include="Services\OrderRuleViolation.cs" />
     <Compile Include="Services\OrderService.cs" />
     <Compile Include="Models\OrderSummary.cs" />
     <Compile Include="Models\Product.cs" />

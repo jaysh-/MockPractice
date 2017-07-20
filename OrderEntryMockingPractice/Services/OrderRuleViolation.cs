@@ -1,6 +1,5 @@
 ﻿namespace OrderEntryMockingPractice.Services
 {
-	//TODO Interface?
 	public class OrderRuleViolation : IRuleViolation
 	{
 		public string ErrorMessage { get; private set; }
