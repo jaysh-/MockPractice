@@ -6,11 +6,13 @@ namespace OrderEntryMockingPractice.Services
 {
 	public class OrderService
 	{
-		private IProductRepository _productRepository;
+		private readonly IProductRepository _productRepository;
+		private IOrderFulfillmentService _orderFulfillment;
 
-		public OrderService(IProductRepository productRepository)
+		public OrderService(IProductRepository productRepository, IOrderFulfillmentService orderFulfillment)
 		{
 			_productRepository = productRepository;
+			_orderFulfillment = orderFulfillment;
 		}
 
         public OrderSummary PlaceOrder(Order order)
@@ -18,13 +20,20 @@ namespace OrderEntryMockingPractice.Services
 			//Valid if all items are unique and stocked
 	        if (IsValid(order))
 	        {
-				return new OrderSummary();
+		        var orderConfirmation = _orderFulfillment.Fulfill(order);
+
+				//Add OrderNumber to summary
+				return new OrderSummary()
+				{
+					OrderId = orderConfirmation.OrderId,
+					OrderNumber = orderConfirmation.OrderNumber
+				};
 	        }
 			throw new OrderException(new List<OrderRuleViolation>());
         }
 
 
-	    private bool IsValid(Order order)
+	    public bool IsValid(Order order)
 	    {
 		    return AreProductsUnique(order.OrderItems) && AreProductsInStock(order.OrderItems);
 	    }
