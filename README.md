@@ -7,12 +7,12 @@ Using your favorite unit test library and mocking framework, write tests for the
 Do not implement any of the existing interfaces.
 Any implementation code you write should exist primarily in the methods being tested.
 
-# TestCases
-## OrderService.PlaceOrder
+# Test Cases
+## OrderService.PlaceOrder Specification
 ### Order Validity
 An order is valid if
-1 OrderItems are unique by product sku
-2 All products are in stock
+1. OrderItems are unique by product sku
+2. All products are in stock
 
 Otherwise, an exception should be thrown containing a list of reasons why the order is not valid.
 
