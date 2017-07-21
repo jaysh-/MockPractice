@@ -1,8 +1,8 @@
-using System.Collections.Generic;
 using NSubstitute;
 using OrderEntryMockingPractice.Models;
 using OrderEntryMockingPractice.Services;
 using Shouldly;
+using System.Collections.Generic;
 
 namespace OrderEntryMockingPracticeTests
 {
@@ -28,21 +28,17 @@ namespace OrderEntryMockingPracticeTests
 			Set_OrderFullfillment_ReturnedConfirmation(orderFulfillment, validOrder);
 
 
-			var sut = new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
-			return sut;
+			return new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
 		}
 
-		private static Order Get_ValidOrder()
+		private static Order Get_OrderWithoutDuplicates()
 		{
-			var validOrder = Get_OrderFromOrderItems(Get_OrderItemsWithoutDuplicates());
-			return validOrder;
+			return Get_OrderFromOrderItems(Get_OrderItemsWithoutDuplicates());
 		}
 
-		private static Order Get_InvalidOrder_RepeatedSkus()
+		private static Order Get_OrderWithRepeatedSkus()
 		{
-			var orderItems = Get_OrderItems_WithDuplicateSkus();
-			var invalidOrder = Get_OrderFromOrderItems(orderItems);
-			return invalidOrder;
+			return Get_OrderFromOrderItems(Get_OrderItems_WithDuplicateSkus());
 		}
 
 
@@ -86,10 +82,18 @@ namespace OrderEntryMockingPracticeTests
 			});
 		}
 
-		private static IProductRepository Get_AlwaysStocked_MockProductRepo(bool alwaysInStock)
+		private static IProductRepository Get_AlwaysStocked_MockProductRepo()
 		{
 			var productRepo = Substitute.For<IProductRepository>();
-			productRepo.IsInStock(Arg.Any<string>()).Returns(alwaysInStock);
+			productRepo.IsInStock(Arg.Any<string>()).Returns(true);
+
+			return productRepo;
+		}
+
+		private static IProductRepository Get_AlwaysOutOfStock_MockProductRepo()
+		{
+			var productRepo = Substitute.For<IProductRepository>();
+			productRepo.IsInStock(Arg.Any<string>()).Returns(false);
 
 			return productRepo;
 		}
@@ -231,7 +235,6 @@ namespace OrderEntryMockingPracticeTests
 			return orderItems;
 		}
 
-		//TODO FINISH Below Here
 		private static List<OrderItem> Get_ValidRealisticOrderItems()
 		{
 			var realisticOrderItems = new List<OrderItem>()
@@ -311,6 +314,7 @@ namespace OrderEntryMockingPracticeTests
 
 		private static void Set_ValidRealisticItems_InStock(IProductRepository productRepo)
 		{
+			//Could also iterate over the products and add their skus 
 			productRepo.IsInStock("3-2000-14").Returns(true);
 			productRepo.IsInStock("2-0001-43").Returns(true);
 			productRepo.IsInStock("1-2032-89").Returns(true);

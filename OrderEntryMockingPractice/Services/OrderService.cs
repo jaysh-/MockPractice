@@ -25,39 +25,54 @@ namespace OrderEntryMockingPractice.Services
 
         public OrderSummary PlaceOrder(Order order)
         {
-	        //Valid if all items are unique and stocked
-	        if (!IsValid(order))
+	        if (!IsOrderStockedWithUniqueProducts(order))
 	        {
 		        throw new OrderException(GetOrderValidationErrors(order).AsReadOnly());
 	        }
-
 	        return GetOrderSummary(order);
         }
 
-		private List<OrderRuleViolation> GetOrderValidationErrors(Order order)
+
+		public bool IsOrderStockedWithUniqueProducts(Order order)
+	    {
+		    return AreProductsUnique(order.OrderItems) && AreProductsInStock(order.OrderItems);
+	    }
+
+
+		public bool AreProductsUnique(List<OrderItem> products)
 		{
-			var errorList = new List<OrderRuleViolation>();
-			if (!AreProductsInStock(order.OrderItems))
-			{
-				errorList.Add(new OrderRuleViolation("A product is out of stock"));
-			}
-			if (!AreProductsUnique(order.OrderItems))
-			{
-				errorList.Add(new OrderRuleViolation("Products are not unique"));
-			}
-			return errorList;
+			return products.GroupBy(x => x.Product.Sku).Select(x => x.First()).ToList().Count == products.Count;
 		}
+
+
+		public bool AreProductsInStock(List<OrderItem> orderItems)
+		{
+			foreach (var item in orderItems)
+			{
+				if (!_productRepository.IsInStock(item.Product.Sku))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+
+		/*
+		 * Private Helpers
+		 */
+
 
 		[SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
 		private OrderSummary GetOrderSummary(Order order)
 		{
 			var orderConfirmation = _orderFulfillment.Fulfill(order);
-			var customer = GetCustomerFromId(order.CustomerId);
-			var taxes = _taxRateService.GetTaxEntries(customer.PostalCode, customer.Country);
+			var taxes = GetTaxes(order);
 			var netTotal = GetNetTotal(order.OrderItems);
 			var total = GetTotal(taxes, netTotal);
 
-			_emailService.SendOrderConfirmationEmail(orderConfirmation.CustomerId, orderConfirmation.OrderId);
+			SendConfirmationEmail(orderConfirmation);
+
 			return new OrderSummary()
 			{
 				OrderId = orderConfirmation.OrderId,
@@ -71,6 +86,19 @@ namespace OrderEntryMockingPractice.Services
 			};
 		}
 
+		private IEnumerable<TaxEntry> GetTaxes(Order order)
+		{
+			var customer = GetCustomerFromId(order.CustomerId);
+			var taxes = _taxRateService.GetTaxEntries(customer.PostalCode, customer.Country);
+			return taxes;
+		}
+
+		private void SendConfirmationEmail(OrderConfirmation orderConfirmation)
+		{
+			_emailService.SendOrderConfirmationEmail(orderConfirmation.CustomerId, orderConfirmation.OrderId);
+		}
+
+
 		private static decimal GetTotal(IEnumerable<TaxEntry> taxes, decimal pretax)
 		{
 			var total = 0.0m;
@@ -81,6 +109,7 @@ namespace OrderEntryMockingPractice.Services
 
 			return total;
 		}
+
 
 		private static decimal GetNetTotal(IEnumerable<OrderItem> orderItems)
 		{
@@ -95,12 +124,13 @@ namespace OrderEntryMockingPractice.Services
 			return total;
 		}
 
+
 		private Customer GetCustomerFromId(int? id)
 		{
 			Customer customer;
 			if (id != null)
 			{
-				customer = _customerRepository.Get((int) id);
+				customer = _customerRepository.Get((int)id);
 			}
 			else
 			{
@@ -110,26 +140,18 @@ namespace OrderEntryMockingPractice.Services
 		}
 
 
-		public bool IsValid(Order order)
-	    {
-		    return AreProductsUnique(order.OrderItems) && AreProductsInStock(order.OrderItems);
-	    }
-
-		public bool AreProductsInStock(List<OrderItem> orderItems)
+		private List<OrderRuleViolation> GetOrderValidationErrors(Order order)
 		{
-			foreach (var item in orderItems)
+			var errorList = new List<OrderRuleViolation>();
+			if (!AreProductsInStock(order.OrderItems))
 			{
-				if (!_productRepository.IsInStock(item.Product.Sku))
-				{
-					return false;
-				}
+				errorList.Add(new OrderRuleViolation("A product is out of stock"));
 			}
-			return true;
-		}
-
-		public bool AreProductsUnique(List<OrderItem> products)
-		{
-			return products.GroupBy(x => x.Product.Sku).Select(x => x.First()).ToList().Count == products.Count;
+			if (!AreProductsUnique(order.OrderItems))
+			{
+				errorList.Add(new OrderRuleViolation("Products are not unique"));
+			}
+			return errorList;
 		}
 	}
 }
