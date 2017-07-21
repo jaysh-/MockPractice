@@ -53,7 +53,7 @@ namespace OrderEntryMockingPracticeTests
 		}
 
 		[Test]
-		public void OrderService_PlaceInvalidOrder_OrderException_OutOfStockAndDuplicate()
+		public void OrderService_PlaceOrder_OrderException_OutOfStockAndDuplicate()
 		{
 			//Arrange
 			var orderWithRepeatedSkus = Get_OrderWithRepeatedSkus();
@@ -67,13 +67,13 @@ namespace OrderEntryMockingPracticeTests
 			}
 			catch (OrderException e)
 			{
+				e.Reasons.ShouldBeUnique();
 				e.Reasons.Count.ShouldBe(2);
-				//Read-only list
 			}
 		}
 
 		[Test]
-		public void OrderService_PlaceValidOrder_OrderSummaryReturned()
+		public void OrderService_PlaceOrder_OrderSummaryReturned()
 		{
 			//Arrange
 			var orderWithoutDuplicates = Get_OrderWithoutDuplicates();
