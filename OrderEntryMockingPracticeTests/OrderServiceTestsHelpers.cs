@@ -38,7 +38,7 @@ namespace OrderEntryMockingPracticeTests
 			return validOrder;
 		}
 
-		private static Order Get_InvalidOrder()
+		private static Order Get_InvalidOrder_RepeatedSkus()
 		{
 			var orderItems = Get_OrderItems_WithDuplicateSkus();
 			var invalidOrder = Get_OrderFromOrderItems(orderItems);
