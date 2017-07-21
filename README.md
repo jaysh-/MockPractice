@@ -16,7 +16,7 @@ An order is valid if
 
 Otherwise, an exception should be thrown containing a list of reasons why the order is not valid.
 
-### On Valid Order
+#### On Valid Order
 * If order is valid, an OrderSummary is returned
   * it is submitted to the OrderFulfillmentService.
   * containing the order fulfillment confirmation number.
@@ -25,6 +25,8 @@ Otherwise, an exception should be thrown containing a list of reasons why the or
   * NetTotal = SUM(Product.Quantity * Product.Price)
   * OrderTotal = SUM(TaxEntry.Rate * NetTotal)
   * an confirmation email is sent to the customer.
+  
+### Services
 * Customer information can be retrieved from the CustomerRepository
 * Taxes can be retrieved from the TaxRateService
 * The ProductRepository can be used to determine if the products are in stock.
