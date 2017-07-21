@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using NSubstitute;
 using OrderEntryMockingPractice.Models;
 using OrderEntryMockingPractice.Services;
-using Shouldly;
 
 namespace OrderEntryMockingPracticeTests
 {
@@ -24,73 +23,26 @@ namespace OrderEntryMockingPracticeTests
 			return productRepo;
 		}
 
-		private static IProductRepository Get_InAndOutOfStock_MockProductRepo()
-		{
-			var productRepo = Substitute.For<IProductRepository>();
-			productRepo.IsInStock("not in stock").Returns(false);
-			productRepo.IsInStock("in stock").Returns(true);
-			return productRepo;
-		}
-
-		private static OrderService Get_InitializedOrderService(Order validOrder, IProductRepository productRepo)
+		private static OrderService Get_OrderService(Order order, IProductRepository productRepo)
 		{
 			var orderFulfillment = Substitute.For<IOrderFulfillmentService>();
 			var taxRate = Substitute.For<ITaxRateService>();
 			var customerRepo = Substitute.For<ICustomerRepository>();
 			var email = Substitute.For<IEmailService>();
 
-			Set_TaxRateReturn(taxRate);
-			Set_CustomerRepoReturn_ValidId(customerRepo);
-			Set_OrderFullfillment_ReturnedConfirmation(orderFulfillment, validOrder);
-
+			Set_TaxRateServiceReturn_GetTaxEntries(taxRate);
+			Set_CustomerRepoReturn_CustomerWithId1(customerRepo);
+			Set_OrderFullfillmentReturn_ForProvidedOrder(orderFulfillment, order);
 
 			return new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
 		}
 
-		private static OrderItem Get_InStock_OrderItem()
-		{
-			return new OrderItem
-			{
-				Product = new Product
-				{
-					Sku = "in stock"
-				},
-				Quantity = 1
-			};
-		}
-
-		private static List<OrderItem> Get_InStockNotUnique_OrderItems()
-		{
-			var orderItems = new List<OrderItem>
-			{
-				Get_InStock_OrderItem(),
-				Get_InStock_OrderItem()
-			};
-
-			orderItems.Count.ShouldBe(2);
-
-			return orderItems;
-		}
-
-		private static List<OrderItem> Get_OneOutOfStock_OrderItems()
-		{
-			var orderItems = new List<OrderItem>
-			{
-				Get_InStock_OrderItem(),
-				Get_OutOfStock_OrderItem()
-			};
-
-			orderItems.Count.ShouldBe(2);
-
-			return orderItems;
-		}
-
-		private static Order Get_OrderFromOrderItems(List<OrderItem> orderItems)
+		private static Order Get_RealisticInStockOrderWithoutDuplicates()
 		{
 			return new Order
 			{
 				CustomerId = 1,
-				OrderItems = orderItems
+				OrderItems = Get_ValidRealisticOrderItems()
 			};
 		}
 
@@ -126,7 +78,7 @@ namespace OrderEntryMockingPracticeTests
 			return orderItems;
 		}
 
-		private static List<OrderItem> Get_OrderItemsWithoutDuplicates()
+		private static List<OrderItem> Get_OrderItems_WithoutDuplicateSkus()
 		{
 			var orderItems = new List<OrderItem>
 			{
@@ -159,41 +111,37 @@ namespace OrderEntryMockingPracticeTests
 			return orderItems;
 		}
 
-		private static Order Get_OrderWithNullCustomerId(List<OrderItem> orderItems)
+		private static Order Get_OrderWithNullCustomerId()
 		{
 			return new Order
 			{
 				CustomerId = null,
+				OrderItems = Get_OrderItems_WithoutDuplicateSkus()
+			};
+		}
+		private static Order Get_Order(List<OrderItem> orderItems)
+		{
+			return new Order
+			{
+				CustomerId = 1,
 				OrderItems = orderItems
 			};
 		}
 
-		private static Order Get_OrderWithoutDuplicates()
+		private static Order Get_Order_WithoutDuplicates()
 		{
-			return Get_OrderFromOrderItems(Get_OrderItemsWithoutDuplicates());
+			return Get_Order(Get_OrderItems_WithoutDuplicateSkus());
 		}
 
-		private static Order Get_OrderWithRepeatedSkus()
+		private static Order Get_Order_WithRepeatedSkus()
 		{
-			return Get_OrderFromOrderItems(Get_OrderItems_WithDuplicateSkus());
+			return Get_Order(Get_OrderItems_WithDuplicateSkus());
 		}
 
-		private static OrderItem Get_OutOfStock_OrderItem()
-		{
-			return new OrderItem
-			{
-				Product = new Product
-				{
-					Sku = "not in stock"
-				},
-				Quantity = 1
-			};
-		}
-
-		private static IProductRepository Get_Realistic_MockProductRepo()
+		private static IProductRepository Get_RealisticAndStocked_MockProductRepo()
 		{
 			var productRepo = Substitute.For<IProductRepository>();
-			Set_ValidRealisticItems_InStock(productRepo);
+			Set_RealisticItems_InStock(productRepo);
 
 			return productRepo;
 		}
@@ -268,7 +216,7 @@ namespace OrderEntryMockingPracticeTests
 		}
 
 
-		private static void Set_CustomerRepoReturn_ValidId(ICustomerRepository customerRepo)
+		private static void Set_CustomerRepoReturn_CustomerWithId1(ICustomerRepository customerRepo)
 		{
 			customerRepo.Get(1).Returns(new Customer
 			{
@@ -279,10 +227,10 @@ namespace OrderEntryMockingPracticeTests
 			});
 		}
 
-		private static void Set_OrderFullfillment_ReturnedConfirmation(IOrderFulfillmentService orderFulfillment,
-			Order validOrder)
+		private static void Set_OrderFullfillmentReturn_ForProvidedOrder(IOrderFulfillmentService orderFulfillment,
+			Order order)
 		{
-			orderFulfillment.Fulfill(validOrder).Returns(new OrderConfirmation
+			orderFulfillment.Fulfill(order).Returns(new OrderConfirmation
 			{
 				CustomerId = 1,
 				OrderId = 2,
@@ -290,7 +238,7 @@ namespace OrderEntryMockingPracticeTests
 			});
 		}
 
-		private static void Set_ValidRealisticItems_InStock(IProductRepository productRepo)
+		private static void Set_RealisticItems_InStock(IProductRepository productRepo)
 		{
 			//Could also iterate over the products and add their skus 
 			productRepo.IsInStock("3-2000-14").Returns(true);
@@ -300,15 +248,15 @@ namespace OrderEntryMockingPracticeTests
 			productRepo.IsInStock("1-1989-5").Returns(true);
 		}
 
-		private static void Set_ServiceReturns(ITaxRateService taxRate, ICustomerRepository customerRepo,
-			IOrderFulfillmentService orderFulfillment, Order validOrder)
+		private static void Set_MockedServiceReturns(ITaxRateService taxRate, ICustomerRepository customerRepo,
+			IOrderFulfillmentService orderFulfillment, Order order)
 		{
-			Set_TaxRateReturn(taxRate);
-			Set_CustomerRepoReturn_ValidId(customerRepo);
-			Set_OrderFullfillment_ReturnedConfirmation(orderFulfillment, validOrder);
+			Set_TaxRateServiceReturn_GetTaxEntries(taxRate);
+			Set_CustomerRepoReturn_CustomerWithId1(customerRepo);
+			Set_OrderFullfillmentReturn_ForProvidedOrder(orderFulfillment, order);
 		}
 
-		private static void Set_TaxRateReturn(ITaxRateService taxRate)
+		private static void Set_TaxRateServiceReturn_GetTaxEntries(ITaxRateService taxRate)
 		{
 			taxRate.GetTaxEntries(Arg.Any<string>(), Arg.Any<string>()).Returns(new List<TaxEntry>
 			{

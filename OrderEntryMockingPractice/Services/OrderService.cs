@@ -25,7 +25,7 @@ namespace OrderEntryMockingPractice.Services
 
         public OrderSummary PlaceOrder(Order order)
         {
-	        if (!IsOrderStockedWithUniqueProducts(order))
+	        if (!OrderItemsStockedAndUnique(order))
 	        {
 		        throw new OrderException(GetOrderValidationErrors(order).AsReadOnly());
 	        }
@@ -33,19 +33,23 @@ namespace OrderEntryMockingPractice.Services
         }
 
 
-		public bool IsOrderStockedWithUniqueProducts(Order order)
-	    {
-		    return AreProductsUnique(order.OrderItems) && AreProductsInStock(order.OrderItems);
-	    }
+
+		/*
+		 * Private Helpers
+		 */
+		private bool OrderItemsStockedAndUnique(Order order)
+		{
+			return AreProductsUnique(order.OrderItems) && ProductsAreInStock(order.OrderItems);
+		}
 
 
-		public bool AreProductsUnique(List<OrderItem> products)
+		private bool AreProductsUnique(List<OrderItem> products)
 		{
 			return products.GroupBy(x => x.Product.Sku).Select(x => x.First()).ToList().Count == products.Count;
 		}
 
 
-		public bool AreProductsInStock(List<OrderItem> orderItems)
+		private bool ProductsAreInStock(List<OrderItem> orderItems)
 		{
 			foreach (var item in orderItems)
 			{
@@ -56,12 +60,6 @@ namespace OrderEntryMockingPractice.Services
 			}
 			return true;
 		}
-
-
-		/*
-		 * Private Helpers
-		 */
-
 
 		[SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
 		private OrderSummary GetOrderSummary(Order order)
@@ -143,7 +141,7 @@ namespace OrderEntryMockingPractice.Services
 		private List<OrderRuleViolation> GetOrderValidationErrors(Order order)
 		{
 			var errorList = new List<OrderRuleViolation>();
-			if (!AreProductsInStock(order.OrderItems))
+			if (!ProductsAreInStock(order.OrderItems))
 			{
 				errorList.Add(new OrderRuleViolation("A product is out of stock"));
 			}
