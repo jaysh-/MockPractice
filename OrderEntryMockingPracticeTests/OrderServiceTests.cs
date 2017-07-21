@@ -146,7 +146,7 @@ namespace OrderEntryMockingPracticeTests
 			var customerRepo = Substitute.For<ICustomerRepository>();
 			var email = Substitute.For<IEmailService>();
 
-			SetServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
+			Set_ServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
 
 			//Act
 			var sut = new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
@@ -197,7 +197,7 @@ namespace OrderEntryMockingPracticeTests
 			var customerRepo = Substitute.For<ICustomerRepository>();
 			var email = Substitute.For<IEmailService>();
 
-			SetServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
+			Set_ServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
 
 			//Act
 			var sut = new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
@@ -262,7 +262,7 @@ namespace OrderEntryMockingPracticeTests
 			var customerRepo = Substitute.For<ICustomerRepository>();
 			var email = Substitute.For<IEmailService>();
 
-			SetServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
+			Set_ServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
 
 
 			var sut = new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
@@ -283,7 +283,7 @@ namespace OrderEntryMockingPracticeTests
 			var customerRepo = Substitute.For<ICustomerRepository>();
 			var email = Substitute.For<IEmailService>();
 
-			SetServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
+			Set_ServiceReturns(taxRate, customerRepo, orderFulfillment, validOrder);
 			Set_ValidRealisticItems_InStock(productRepo);
 			
 			var orderSummary = new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email).PlaceOrder(validOrder);
