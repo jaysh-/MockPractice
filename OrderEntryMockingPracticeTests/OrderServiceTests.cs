@@ -1,36 +1,52 @@
-﻿using NSubstitute;
+﻿using System;
+using System.Linq;
+using NSubstitute;
 using NUnit.Framework;
-using OrderEntryMockingPractice.Models;
 using OrderEntryMockingPractice.Services;
 using Shouldly;
-using System;
-using System.Linq;
+using static OrderEntryMockingPracticeTests.OrderServiceTestsExtensions;
 
 namespace OrderEntryMockingPracticeTests
 {
-	internal partial class OrderServiceTests
+	internal class OrderServiceTests
 	{
+		private IOrderFulfillmentService _orderFulfillment;
+		private ITaxRateService _taxRateService;
+		private ICustomerRepository _customerRepository;
+		private IEmailService _emailService;
+		private IProductRepository _productRepo;
+		private OrderService _sut;
+
+		[SetUp]
+		public void BeforeEach()
+		{
+			_orderFulfillment = Substitute.For<IOrderFulfillmentService>();
+			_taxRateService = Substitute.For<ITaxRateService>();
+			_taxRateService.SetTaxRateServiceReturn();
+			_customerRepository = Substitute.For<ICustomerRepository>();
+			_customerRepository.SetCustomerRepoReturn();
+			_emailService = Substitute.For<IEmailService>();
+			_productRepo = Substitute.For<IProductRepository>();
+			_sut = new OrderService(_productRepo, _orderFulfillment, _taxRateService, _customerRepository, _emailService);
+		}
+
 		[Test]
 		public void OrderService_PlaceOutofStockOrder_OutofStockOrderException()
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysOutOfStock_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			_productRepo.AllItemsAreOutOfStock();
 
-			try
+			//Act
+			var e = Assert.Throws<OrderException>(() =>
 			{
-				//Act
-				sut.PlaceOrder(order);
-				Assert.Fail();
-			}
-			catch (OrderException e)
-			{
-				//Assert
-				e.Reasons.Count.ShouldBe(1);
-				e.Reasons.FirstOrDefault().ShouldBeOfType<OrderRuleViolation>();
-				e.Reasons.First().ErrorMessage.ShouldBe("A product is out of stock");
-			}
+				_sut.PlaceOrder(order);
+			});
+
+			//Assert
+			e.Reasons.Count.ShouldBe(1);
+			e.Reasons.FirstOrDefault().ShouldBeOfType<OrderRuleViolation>();
+			e.Reasons.First().ErrorMessage.ShouldBe("A product is out of stock");
 		}
 
 		[Test]
@@ -38,22 +54,17 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithRepeatedSkus();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
-			
-			try
+			_productRepo.AllItemsAreStocked();
+
+			var e = Assert.Throws<OrderException>(() =>
 			{
-				//Act
-				sut.PlaceOrder(order);
-				Assert.Fail();
-			}
-			catch (OrderException e)
-			{
-				//Assert
-				e.Reasons.Count.ShouldBe(1);
-				e.Reasons.FirstOrDefault().ShouldBeOfType<OrderRuleViolation>();
-				e.Reasons.First().ErrorMessage.ShouldBe("Products are not unique");
-			}
+				_sut.PlaceOrder(order);
+			});
+
+			//Assert
+			e.Reasons.Count.ShouldBe(1);
+			e.Reasons.FirstOrDefault().ShouldBeOfType<OrderRuleViolation>();
+			e.Reasons.First().ErrorMessage.ShouldBe("Products are not unique");
 		}
 
 		[Test]
@@ -61,21 +72,15 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithRepeatedSkus();
-			var productRepo = Get_AlwaysOutOfStock_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			_productRepo.AllItemsAreOutOfStock();
 
-			try
+			var e = Assert.Throws<OrderException>(() =>
 			{
-				//Act
-				sut.PlaceOrder(order);
-				Assert.Fail();
-			}
-			catch (OrderException e)
-			{
-				//Assert
-				e.Reasons.ShouldBeUnique();
-				e.Reasons.Count.ShouldBe(2);
-			}
+				_sut.PlaceOrder(order);
+			});
+			//Assert
+			e.Reasons.ShouldBeUnique();
+			e.Reasons.Count.ShouldBe(2);
 		}
 
 		[Test]
@@ -83,14 +88,14 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var orderSummary = sut.PlaceOrder(order);
+			var orderSummary = _sut.PlaceOrder(order);
 
 			//Assert
-			orderSummary.ShouldBeOfType<OrderSummary>();
+			orderSummary.ShouldNotBeNull();
 		}
 
 		[Test]
@@ -98,21 +103,14 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-
-			var orderFulfillment = Substitute.For<IOrderFulfillmentService>();
-			var taxRate = Substitute.For<ITaxRateService>();
-			var customerRepo = Substitute.For<ICustomerRepository>();
-			var email = Substitute.For<IEmailService>();
-
-			Set_MockedServiceReturns(taxRate, customerRepo, orderFulfillment, order);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var sut = new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
-			sut.PlaceOrder(order);
+			_sut.PlaceOrder(order);
 
 			//Assert
-			orderFulfillment.Received().Fulfill(order);
+			_orderFulfillment.Received().Fulfill(order);
 		}
 
 		[Test]
@@ -120,11 +118,11 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var orderSummary = sut.PlaceOrder(order);
+			var orderSummary = _sut.PlaceOrder(order);
 
 			//Assert
 			orderSummary.OrderNumber.ShouldBe("1337");
@@ -135,11 +133,11 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var orderSummary = sut.PlaceOrder(order);
+			var orderSummary = _sut.PlaceOrder(order);
 
 			//Assert
 			orderSummary.OrderId.ShouldBe(2);
@@ -150,22 +148,15 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepository = Get_AlwaysStocked_MockProductRepo();
-
-			var orderFulfillmentService = Substitute.For<IOrderFulfillmentService>();
-			var taxRateService = Substitute.For<ITaxRateService>();
-			var customerRepository = Substitute.For<ICustomerRepository>();
-			var emailService = Substitute.For<IEmailService>();
-
-			Set_MockedServiceReturns(taxRateService, customerRepository, orderFulfillmentService, order);
-			var sut = new OrderService(productRepository, orderFulfillmentService, taxRateService, customerRepository, emailService);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var orderSummary = sut.PlaceOrder(order);
-			var customer = customerRepository.Get(1);
+			var orderSummary = _sut.PlaceOrder(order);
+			var customer = _customerRepository.Get(1);
 
 			//Assert
-			orderSummary.Taxes.ShouldBe(taxRateService.GetTaxEntries(customer.PostalCode, customer.Country));
+			orderSummary.Taxes.ShouldBe(_taxRateService.GetTaxEntries(customer.PostalCode, customer.Country));
 		}
 
 		[Test]
@@ -173,11 +164,14 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_OrderWithNullCustomerId();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
-			//Act and assert
-			Should.Throw<ArgumentException>(() => { sut.PlaceOrder(order); });
+			//Act
+			var e = Assert.Throws<ArgumentException>(() => _sut.PlaceOrder(order));
+
+			//Assert
+			e.ShouldNotBeNull();
 		}
 
 		[Test]
@@ -185,11 +179,12 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var orderSummary = sut.PlaceOrder(order);
+			var orderSummary = _sut.PlaceOrder(order);
 
 			//Assert
 			orderSummary.NetTotal.ShouldBe(90m);
@@ -200,11 +195,11 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var orderSummary = sut.PlaceOrder(order);
+			var orderSummary = _sut.PlaceOrder(order);
 
 			//Assert
 			orderSummary.Total.ShouldBe(1242m);
@@ -215,32 +210,26 @@ namespace OrderEntryMockingPracticeTests
 		{
 			//Arrange
 			var order = Get_Order_WithoutDuplicates();
-			var productRepo = Get_AlwaysStocked_MockProductRepo();
-			var orderFulfillment = Substitute.For<IOrderFulfillmentService>();
-			var taxRate = Substitute.For<ITaxRateService>();
-			var customerRepo = Substitute.For<ICustomerRepository>();
-			var email = Substitute.For<IEmailService>();
-			Set_MockedServiceReturns(taxRate, customerRepo, orderFulfillment, order);
+			_productRepo.AllItemsAreStocked();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
-			var sut = new OrderService(productRepo, orderFulfillment, taxRate, customerRepo, email);
-			
 			//Act
-			sut.PlaceOrder(order);
+			_sut.PlaceOrder(order);
 
 			//Assert
-			email.Received().SendOrderConfirmationEmail(customerId: 1, orderId: 2);
+			_emailService.Received().SendOrderConfirmationEmail(customerId: 1, orderId: 2);
 		}
 
 		[Test]
 		public void OrderService_PlaceOrder_FullOrderSummary()
 		{
 			//Arrange
-			var order = Get_RealisticInStockOrderWithoutDuplicates();
-			var productRepo = Get_RealisticAndStocked_MockProductRepo();
-			var sut = Get_OrderService(order, productRepo);
+			var order = GetRealisticOrder();
+			_productRepo.Set_RealisticItems_InStock();
+			_orderFulfillment.SetOrderFullfillmentReturn(order);
 
 			//Act
-			var orderSummary = sut.PlaceOrder(order);
+			var orderSummary = _sut.PlaceOrder(order);
 
 			//Assert
 			orderSummary.CustomerId.ShouldBe(1);
