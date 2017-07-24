@@ -46,7 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="OrderServiceTests.cs" />
-    <Compile Include="OrderServiceTestsHelpers.cs" />
+    <Compile Include="OrderServiceTestsExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
