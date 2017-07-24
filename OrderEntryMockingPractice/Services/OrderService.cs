@@ -2,7 +2,6 @@
 using OrderEntryMockingPractice.Models;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 namespace OrderEntryMockingPractice.Services
 {
@@ -25,51 +24,28 @@ namespace OrderEntryMockingPractice.Services
 
         public OrderSummary PlaceOrder(Order order)
         {
-	        if (!OrderItemsStockedAndUnique(order))
+	        if (!Order.IsValid(_productRepository, order))
 	        {
-		        throw new OrderException(GetOrderValidationErrors(order).AsReadOnly());
+		        throw new OrderException(Order.GetValidationErrors(_productRepository, order));
 	        }
 	        return GetOrderSummary(order);
         }
 
-
-
 		/*
 		 * Private Helpers
 		 */
-		private bool OrderItemsStockedAndUnique(Order order)
-		{
-			return AreProductsUnique(order.OrderItems) && ProductsAreInStock(order.OrderItems);
-		}
-
-
-		private bool AreProductsUnique(List<OrderItem> products)
-		{
-			return products.GroupBy(x => x.Product.Sku).Select(x => x.First()).ToList().Count == products.Count;
-		}
-
-
-		private bool ProductsAreInStock(List<OrderItem> orderItems)
-		{
-			foreach (var item in orderItems)
-			{
-				if (!_productRepository.IsInStock(item.Product.Sku))
-				{
-					return false;
-				}
-			}
-			return true;
-		}
 
 		[SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
 		private OrderSummary GetOrderSummary(Order order)
 		{
-			var orderConfirmation = _orderFulfillment.Fulfill(order);
-			var taxes = GetTaxes(order);
+			var customer = GetCustomerFromId(_customerRepository, order.CustomerId);
+			var taxes = GetTaxes(_taxRateService, customer);
+
 			var netTotal = GetNetTotal(order.OrderItems);
 			var total = GetTotal(taxes, netTotal);
 
-			SendConfirmationEmail(orderConfirmation);
+			var orderConfirmation = _orderFulfillment.Fulfill(order);
+			SendConfirmationEmail(_emailService, orderConfirmation);
 
 			return new OrderSummary()
 			{
@@ -84,16 +60,14 @@ namespace OrderEntryMockingPractice.Services
 			};
 		}
 
-		private IEnumerable<TaxEntry> GetTaxes(Order order)
+		private static IEnumerable<TaxEntry> GetTaxes(ITaxRateService taxRateService, Customer customer)
 		{
-			var customer = GetCustomerFromId(order.CustomerId);
-			var taxes = _taxRateService.GetTaxEntries(customer.PostalCode, customer.Country);
-			return taxes;
+			return taxRateService.GetTaxEntries(customer.PostalCode, customer.Country);
 		}
 
-		private void SendConfirmationEmail(OrderConfirmation orderConfirmation)
+		private static void SendConfirmationEmail(IEmailService emailService, OrderConfirmation orderConfirmation)
 		{
-			_emailService.SendOrderConfirmationEmail(orderConfirmation.CustomerId, orderConfirmation.OrderId);
+			emailService.SendOrderConfirmationEmail(orderConfirmation.CustomerId, orderConfirmation.OrderId);
 		}
 
 
@@ -123,33 +97,18 @@ namespace OrderEntryMockingPractice.Services
 		}
 
 
-		private Customer GetCustomerFromId(int? id)
+		private static Customer GetCustomerFromId(ICustomerRepository customerRepo, int? id)
 		{
 			Customer customer;
 			if (id != null)
 			{
-				customer = _customerRepository.Get((int)id);
+				customer = customerRepo.Get((int)id);
 			}
 			else
 			{
 				throw new ArgumentException(message: "Customer ID was null");
 			}
 			return customer;
-		}
-
-
-		private List<OrderRuleViolation> GetOrderValidationErrors(Order order)
-		{
-			var errorList = new List<OrderRuleViolation>();
-			if (!ProductsAreInStock(order.OrderItems))
-			{
-				errorList.Add(new OrderRuleViolation("A product is out of stock"));
-			}
-			if (!AreProductsUnique(order.OrderItems))
-			{
-				errorList.Add(new OrderRuleViolation("Products are not unique"));
-			}
-			return errorList;
 		}
 	}
 }
